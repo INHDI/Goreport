@@ -223,6 +223,7 @@ Ensure the IDs are provided as comma-separated integers or interger ranges, e.g.
             combine_reports = False
         # Go through each campaign ID and get the results
         campaign_counter = 1
+
         for CAM_ID in id_list:
             print("[+] Now fetching results for Campaign ID {} ({}/{}).".format(CAM_ID, campaign_counter, len(id_list)))
             try:
@@ -272,10 +273,12 @@ Make sure your URL and API key are correct. Check HTTP vs HTTPS!".format(CAM_ID)
                     elif combine_reports is False:
                         self.generate_report()
                     campaign_counter += 1
+
             except Exception as e:
                 print("[!] There was a problem processing campaign ID {}!".format(CAM_ID))
                 print("L.. Details: {}".format(e))
                 sys.exit()
+
 
     def lookup_ip(self, ip):
         """Lookup the provided IP address with ipinfo.io for location data.
@@ -479,6 +482,9 @@ Make sure your URL and API key are correct. Check HTTP vs HTTPS!".format(CAM_ID)
             temp_dict["fname"] = target.first_name
             temp_dict["lname"] = target.last_name
             temp_dict["ip_address"] = target.ip
+            temp_dict["position"] = target.position
+            print(target.email)
+            print(target.position)
             # Check if this target was recorded as viewing the email (tracking image)
             if target.email in self.targets_opened:
                 temp_dict["opened"] = True
@@ -601,12 +607,12 @@ Make sure your URL and API key are correct. Check HTTP vs HTTPS!".format(CAM_ID)
 
     def _build_output_xlsx_file_name(self):
         """Create the xlsx report name."""
-        xlsx_report = "Gophish Results for {}.xlsx".format(self.cam_name)
+        xlsx_report = "Gophish Results.xlsx"
         return xlsx_report
 
     def _build_output_word_file_name(self):
         """Create the docx report name."""
-        word_report = "Gophish Results for {}.docx".format(self.cam_name)
+        word_report = "Gophish Results.docx"
         return word_report
 
     def _set_word_column_width(self, column, width):
@@ -1128,418 +1134,59 @@ Individuals Who Submitted: {}
 
         header0 = table.cell(0, 0)
         header0.text = ""
-        header0.paragraphs[0].add_run("Email Address", "Cell Text").bold = True
+        header0.paragraphs[0].add_run("First Name", "Cell Text").bold = True
 
         header1 = table.cell(0, 1)
         header1.text = ""
-        header1.paragraphs[0].add_run("Open", "Cell Text").bold = True
+        header1.paragraphs[0].add_run("Last Name", "Cell Text").bold = True
 
         header2 = table.cell(0, 2)
         header2.text = ""
-        header2.paragraphs[0].add_run("Click", "Cell Text").bold = True
+        header2.paragraphs[0].add_run("Email", "Cell Text").bold = True
 
         header3 = table.cell(0, 3)
         header3.text = ""
-        header3.paragraphs[0].add_run("Data", "Cell Text").bold = True
-
-        header4 = table.cell(0, 4)
-        header4.text = ""
-        header4.paragraphs[0].add_run("Report", "Cell Text").bold = True
-
-        header5 = table.cell(0, 5)
-        header5.text = ""
-        header5.paragraphs[0].add_run("OS", "Cell Text").bold = True
-
-        header6 = table.cell(0, 6)
-        header6.text = ""
-        header6.paragraphs[0].add_run("Browser", "Cell Text").bold = True
+        header3.paragraphs[0].add_run("Position", "Cell Text").bold = True
 
         # Sort campaign summary by each dict's email entry and then create results table
         target_counter = 0
         counter = 1
         ordered_results = sorted(self.campaign_results_summary, key=lambda k: k['email'])
         for target in ordered_results:
-            email_cell = table.cell(counter, 0)
-            email_cell.text = "{}".format(target['email'])
+            if target["position"] =="SOC Tier1":
+                first_name = table.cell(counter, 0)
+                first_name.text = "{}".format(target["fname"])
 
-            temp_cell = table.cell(counter, 1)
-            if target['opened']:
-                temp_cell.paragraphs[0].add_run(u'\u2713', "Cell Text Hit")
-            else:
-                temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
+                temp_cell = table.cell(counter, 1)
+                if target['lname']:
+                    temp_cell.paragraphs[0].text = target['lname']
+                else:
+                    temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
 
-            temp_cell = table.cell(counter, 2)
-            if target['clicked']:
-                temp_cell.paragraphs[0].add_run(u'\u2713', "Cell Text Hit")
-            else:
-                temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
+                temp_cell = table.cell(counter, 2)
+                if target['email']:
+                    temp_cell.paragraphs[0].text = target['email']
+                else:
+                    temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
 
-            temp_cell = table.cell(counter, 3)
-            if target['submitted']:
-                temp_cell.paragraphs[0].add_run(u'\u2713', "Cell Text Hit")
-            else:
-                temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
+                temp_cell = table.cell(counter, 3)
+                if target['position']:
+                    temp_cell.paragraphs[0].text = target['position']
+                else:
+                    temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
 
-            temp_cell = table.cell(counter, 4)
-            if target['reported']:
-                temp_cell.paragraphs[0].add_run(u'\u2713', "Cell Text Hit")
-            else:
-                temp_cell.paragraphs[0].add_run(u'\u2718', "Cell Text Miss")
+                temp_cell = table.cell(counter, 4)
 
-            if target['email'] in self.targets_clicked:
-                for event in self.timeline:
-                    if event.message == "Clicked Link" and event.email == target['email']:
-                        user_agent = parse(event.details['browser']['user-agent'])
-                        browser_details = user_agent.browser.family + " " + \
-                                          user_agent.browser.version_string
-                        os_details = user_agent.os.family + " " + \
-                                     user_agent.os.version_string
-                        temp_cell = table.cell(counter, 5)
-                        temp_cell.text = os_details
-                        temp_cell = table.cell(counter, 6)
-                        temp_cell.text = browser_details
-            else:
-                temp_cell = table.cell(counter, 5)
-                temp_cell.text = "N/A"
-                temp_cell = table.cell(counter, 6)
-                temp_cell.text = "N/A"
-            counter += 1
-            target_counter += 1
-            print("[+] Created table entry for {} of {}.".format(
-                target_counter, self.total_targets))
+                counter += 1
+                target_counter += 1
+                #print("[+] Created table entry for {} of {}.".format(
+                #    target_counter, self.total_targets))
 
         d.add_page_break()
 
         # End of the event summary and beginning of the detailed results
         print("[+] Finished writing events summary...")
         print("[+] Detailed results analysis is next and may take some time if you had a lot of targets...")
-        d.add_heading("Detailed Findings", 1)
-        target_counter = 0
-        for target in self.results:
-            # Only create a Detailed Analysis section for targets with clicks
-            if target.email in self.targets_clicked:
-                # Create counters to track table cell locations
-                opened_counter = 1
-                clicked_counter = 1
-                submitted_counter = 1
-                # Create section starting with a header with the first and last name
-                d.add_heading("{} {}".format(target.first_name, target.last_name), 2)
-                p = d.add_paragraph(target.email)
-                p = d.add_paragraph()
-                # Save a spot to record the email sent date and time in the report
-                email_sent_run = p.add_run()
-                # Go through all events to find events for this target
-                for event in self.timeline:
-                    if event.message == "Email Sent" and event.email == target.email:
-                        # Parse the timestamp into separate date and time variables
-                        # Ex: 2017-01-30T14:31:22.534880731-05:00
-                        temp = event.time.split('T')
-                        sent_date = temp[0]
-                        sent_time = temp[1].split('.')[0]
-                        # Record the email sent date and time in the run created earlier
-                        email_sent_run.text = "Email sent on {} at {}".format(sent_date, sent_time)
-
-                    if event.message == "Email Opened" and event.email == target.email:
-                        if opened_counter == 1:
-                            # Create the Email Opened/Previewed table
-                            p = d.add_paragraph()
-                            p.style = d.styles['Normal']
-                            run = p.add_run("Email Previews")
-                            run.bold = True
-
-                            opened_table = d.add_table(rows=1, cols=1, style="GoReport")
-                            opened_table.autofit = True
-                            opened_table.allow_autofit = True
-
-                            header1 = opened_table.cell(0, 0)
-                            header1.text = ""
-                            header1.paragraphs[0].add_run("Time", "Cell Text").bold = True
-
-                        # Begin by adding a row to the table and inserting timestamp
-                        opened_table.add_row()
-                        timestamp = opened_table.cell(opened_counter, 0)
-                        temp = event.time.split('T')
-                        timestamp.text = temp[0] + " " + temp[1].split('.')[0]
-                        opened_counter += 1
-
-                    if event.message == "Clicked Link" and event.email == target.email:
-                        if clicked_counter == 1:
-                            # Create the Clicked Link table
-                            p = d.add_paragraph()
-                            p.style = d.styles['Normal']
-                            run = p.add_run("Email Link Clicked")
-                            run.bold = True
-
-                            clicked_table = d.add_table(rows=1, cols=5, style="GoReport")
-                            clicked_table.autofit = True
-                            clicked_table.allow_autofit = True
-
-                            header1 = clicked_table.cell(0, 0)
-                            header1.text = ""
-                            header1.paragraphs[0].add_run("Time", "Cell Text").bold = True
-
-                            header2 = clicked_table.cell(0, 1)
-                            header2.text = ""
-                            header2.paragraphs[0].add_run("IP", "Cell Text").bold = True
-
-                            header3 = clicked_table.cell(0, 2)
-                            header3.text = ""
-                            header3.paragraphs[0].add_run("Location", "Cell Text").bold = True
-
-                            header4 = clicked_table.cell(0, 3)
-                            header4.text = ""
-                            header4.paragraphs[0].add_run("Browser", "Cell Text").bold = True
-
-                            header5 = clicked_table.cell(0, 4)
-                            header5.text = ""
-                            header5.paragraphs[0].add_run("Operating System",
-                                                          "Cell Text").bold = True
-
-                        clicked_table.add_row()
-                        timestamp = clicked_table.cell(clicked_counter, 0)
-                        temp = event.time.split('T')
-                        timestamp.text = temp[0] + " " + temp[1].split('.')[0]
-
-                        ip_add = clicked_table.cell(clicked_counter, 1)
-                        # Check if browser IP matches the target's IP and record result
-                        ip_add.text = self.compare_ip_addresses(
-                            target.ip, event.details['browser']['address'], self.verbose)
-
-                        # Parse the location data
-                        event_location = clicked_table.cell(clicked_counter, 2)
-                        event_location.text = self.geolocate(target, event.details['browser']['address'], self.google)
-
-                        # Parse the user-agent string for browser and OS details
-                        user_agent = parse(event.details['browser']['user-agent'])
-                        browser_details = user_agent.browser.family + " " + \
-                                          user_agent.browser.version_string
-                        browser = clicked_table.cell(clicked_counter, 3)
-                        browser.text = browser_details
-                        self.browsers.append(browser_details)
-
-                        op_sys = clicked_table.cell(clicked_counter, 4)
-                        os_details = user_agent.os.family + " " + user_agent.os.version_string
-                        op_sys.text = os_details
-                        self.operating_systems.append(os_details)
-
-                        clicked_counter += 1
-
-                    if event.message == "Submitted Data" and event.email == target.email:
-                        if submitted_counter == 1:
-                            # Create the Submitted Data table
-                            p = d.add_paragraph()
-                            p.style = d.styles['Normal']
-                            run = p.add_run("Data Captured")
-                            run.bold = True
-
-                            submitted_table = d.add_table(rows=1, cols=6, style="GoReport")
-                            submitted_table.autofit = True
-                            submitted_table.allow_autofit = True
-
-                            header1 = submitted_table.cell(0, 0)
-                            header1.text = ""
-                            header1.paragraphs[0].add_run("Time", "Cell Text").bold = True
-
-                            header2 = submitted_table.cell(0, 1)
-                            header2.text = ""
-                            header2.paragraphs[0].add_run("IP", "Cell Text").bold = True
-
-                            header3 = submitted_table.cell(0, 2)
-                            header3.text = ""
-                            header3.paragraphs[0].add_run("Location", "Cell Text").bold = True
-
-                            header4 = submitted_table.cell(0, 3)
-                            header4.text = ""
-                            header4.paragraphs[0].add_run("Browser", "Cell Text").bold = True
-
-                            header5 = submitted_table.cell(0, 4)
-                            header5.text = ""
-                            header5.paragraphs[0].add_run("Operating System",
-                                                          "Cell Text").bold = True
-
-                            header6 = submitted_table.cell(0, 5)
-                            header6.text = ""
-                            header6.paragraphs[0].add_run("Data Captured",
-                                                          "Cell Text").bold = True
-
-                        submitted_table.add_row()
-                        timestamp = submitted_table.cell(submitted_counter, 0)
-                        temp = event.time.split('T')
-                        timestamp.text = temp[0] + " " + temp[1].split('.')[0]
-
-                        ip_add = submitted_table.cell(submitted_counter, 1)
-                        ip_add.text = event.details['browser']['address']
-
-                        # Parse the location data
-                        event_location = submitted_table.cell(submitted_counter, 2)
-                        event_location.text = self.geolocate(target, event.details['browser']['address'], self.google)
-
-                        # Parse the user-agent string and add browser and OS details
-                        user_agent = parse(event.details['browser']['user-agent'])
-                        browser_details = user_agent.browser.family + " " + \
-                                          user_agent.browser.version_string
-                        browser = submitted_table.cell(submitted_counter, 3)
-                        browser.text = browser_details
-
-                        op_sys = submitted_table.cell(submitted_counter, 4)
-                        os_details = user_agent.os.family + " " + user_agent.os.version_string
-                        op_sys.text = "{}".format(os_details)
-
-                        # Get just the submitted data from the event's payload
-                        submitted_data = ""
-                        data = submitted_table.cell(submitted_counter, 5)
-                        data_payload = event.details['payload']
-                        # Get all of the submitted data
-                        for key, value in data_payload.items():
-                            # To get just submitted data, we drop the 'rid' key
-                            if not key == "rid":
-                                submitted_data += "{}:{}   ".format(
-                                    key, str(value).strip("[").strip("]"))
-                        data.text = "{}".format(submitted_data)
-                        submitted_counter += 1
-                target_counter += 1
-                print("[+] Processed detailed analysis for {} of {}.".format(
-                    target_counter, self.total_targets))
-
-                d.add_page_break()
-            else:
-                # This target had no clicked or submitted events so move on to next
-                target_counter += 1
-                print("[+] Processed detailed analysis for {} of {}.".format(target_counter, self.total_targets))
-                continue
-
-        print("[+] Finished writing Detailed Analysis section...")
-        # End of the detailed results and the beginning of browser, location, and OS stats
-        d.add_heading("Statistics", 1)
-        p = d.add_paragraph("The following table shows the browsers seen:")
-        # Create browser table
-        browser_table = d.add_table(rows=1, cols=2, style="GoReport")
-        self._set_word_column_width(browser_table.columns[0], Cm(7.24))
-        self._set_word_column_width(browser_table.columns[1], Cm(3.35))
-
-        header1 = browser_table.cell(0, 0)
-        header1.text = ""
-        header1.paragraphs[0].add_run("Browser", "Cell Text").bold = True
-
-        header2 = browser_table.cell(0, 1)
-        header2.text = ""
-        header2.paragraphs[0].add_run("Seen", "Cell Text").bold = True
-
-        p = d.add_paragraph("\nThe following table shows the operating systems seen:")
-
-        # Create OS table
-        os_table = d.add_table(rows=1, cols=2, style="GoReport")
-        self._set_word_column_width(os_table.columns[0], Cm(7.24))
-        self._set_word_column_width(os_table.columns[1], Cm(3.35))
-
-        header1 = os_table.cell(0, 0)
-        header1.text = ""
-        header1.paragraphs[0].add_run("Operating System", "Cell Text").bold = True
-
-        header2 = os_table.cell(0, 1)
-        header2.text = ""
-        header2.paragraphs[0].add_run("Seen", "Cell Text").bold = True
-
-        p = d.add_paragraph("\nThe following table shows the locations seen:")
-
-        # Create geo IP table
-        location_table = d.add_table(rows=1, cols=2, style="GoReport")
-        self._set_word_column_width(location_table.columns[0], Cm(7.24))
-        self._set_word_column_width(location_table.columns[1], Cm(3.35))
-
-        header1 = location_table.cell(0, 0)
-        header1.text = ""
-        header1.paragraphs[0].add_run("Location", "Cell Text").bold = True
-
-        header2 = location_table.cell(0, 1)
-        header2.text = ""
-        header2.paragraphs[0].add_run("Visits", "Cell Text").bold = True
-
-        p = d.add_paragraph("\nThe following table shows the IP addresses captured:")
-
-        # Create IP address table
-        ip_add_table = d.add_table(rows=1, cols=2, style="GoReport")
-        self._set_word_column_width(ip_add_table.columns[0], Cm(7.24))
-        self._set_word_column_width(ip_add_table.columns[1], Cm(3.35))
-
-        header1 = ip_add_table.cell(0, 0)
-        header1.text = ""
-        header1.paragraphs[0].add_run("IP Address", "Cell Text").bold = True
-
-        header2 = ip_add_table.cell(0, 1)
-        header2.text = ""
-        header2.paragraphs[0].add_run("Seen", "Cell Text").bold = True
-
-        p = d.add_paragraph("\nThe following table shows the IP addresses matched with geolocation data:")
-
-        # Create IP address and location table
-        ip_loc_table = d.add_table(rows=1, cols=2, style="GoReport")
-        self._set_word_column_width(ip_loc_table.columns[0], Cm(7.24))
-        self._set_word_column_width(ip_loc_table.columns[1], Cm(3.35))
-
-        header1 = ip_loc_table.cell(0, 0)
-        header1.text = ""
-        header1.paragraphs[0].add_run("IP Address", "Cell Text").bold = True
-
-        header2 = ip_loc_table.cell(0, 1)
-        header2.text = ""
-        header2.paragraphs[0].add_run("Location", "Cell Text").bold = True
-
-        # Counters are used here again to track rows
-        counter = 1
-        # Counter is used to count all elements in the lists to create a unique list with totals
-        counted_browsers = Counter(self.browsers)
-        for key, value in counted_browsers.items():
-            browser_table.add_row()
-            cell = browser_table.cell(counter, 0)
-            cell.text = "{}".format(key)
-
-            cell = browser_table.cell(counter, 1)
-            cell.text = "{}".format(value)
-            counter += 1
-
-        counter = 1
-        counted_os = Counter(self.operating_systems)
-        for key, value in counted_os.items():
-            os_table.add_row()
-            cell = os_table.cell(counter, 0)
-            cell.text = "{}".format(key)
-
-            cell = os_table.cell(counter, 1)
-            cell.text = "{}".format(value)
-            counter += 1
-
-        counter = 1
-        counted_locations = Counter(self.locations)
-        for key, value in counted_locations.items():
-            location_table.add_row()
-            cell = location_table.cell(counter, 0)
-            cell.text = "{}".format(key)
-
-            cell = location_table.cell(counter, 1)
-            cell.text = "{}".format(value)
-            counter += 1
-
-        counter = 1
-        counted_ip_addresses = Counter(self.ip_addresses)
-        for key, value in counted_ip_addresses.items():
-            ip_add_table.add_row()
-            cell = ip_add_table.cell(counter, 0)
-            cell.text = "{}".format(key)
-
-            cell = ip_add_table.cell(counter, 1)
-            cell.text = "{}".format(value)
-            counter += 1
-
-        counter = 1
-        for key, value in self.ip_and_location.items():
-            ip_loc_table.add_row()
-            cell = ip_loc_table.cell(counter, 0)
-            cell.text = "{}".format(key)
-
-            cell = ip_loc_table.cell(counter, 1)
-            cell.text = "{}".format(value)
-            counter += 1
 
         # Finalize document and save it as the value of output_word_report
         d.save("{}".format(self.output_word_report))
