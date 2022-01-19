@@ -483,8 +483,6 @@ Make sure your URL and API key are correct. Check HTTP vs HTTPS!".format(CAM_ID)
             temp_dict["lname"] = target.last_name
             temp_dict["ip_address"] = target.ip
             temp_dict["position"] = target.position
-            print(target.email)
-            print(target.position)
             # Check if this target was recorded as viewing the email (tracking image)
             if target.email in self.targets_opened:
                 temp_dict["opened"] = True
